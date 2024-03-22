@@ -99,6 +99,7 @@ func (c *Component) Start() error {
 	endpoint.GET("/filter/saved", c.filterSavedListHandlerFunc)
 	endpoint.DELETE("/filter/saved/:id", c.filterSavedDeleteHandlerFunc)
 	endpoint.POST("/filter/saved", c.filterSavedAddHandlerFunc)
+	endpoint.POST("/context/table-interval", c.getTableAndIntervalHandlerFunc)
 	endpoint.GET("/user/info", c.d.Auth.UserInfoHandlerFunc)
 	endpoint.GET("/user/avatar", c.d.Auth.UserAvatarHandlerFunc)
 

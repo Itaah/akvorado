@@ -4,10 +4,13 @@
 package console
 
 import (
+	"akvorado/common/helpers"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"net/http"
 	"sort"
 	"strings"
 	"text/template"
@@ -140,26 +143,29 @@ func templateContext(context inputContext) string {
 	return fmt.Sprintf("context `%s`", string(encoded))
 }
 
+func (c *Component) getTableAndIntervalHandlerFunc(gc *gin.Context) {
+	var input inputContext
+	if err := gc.ShouldBindJSON(&input); err != nil {
+		gc.JSON(http.StatusBadRequest, gin.H{"message": helpers.Capitalize(err.Error())})
+		return
+	}
+	table, interval, _ := c.computeTableAndInterval(input)
+
+	result := context{
+		Table:    table,
+		Interval: uint64(interval.Seconds()),
+	}
+
+	gc.JSON(http.StatusOK, result)
+}
+
 func (c *Component) contextFunc(inputStr string) context {
 	var input inputContext
 	if err := json.Unmarshal([]byte(inputStr), &input); err != nil {
 		panic(err)
 	}
 
-	targetInterval := time.Duration(uint64(input.End.Sub(input.Start)) / uint64(input.Points))
-	if targetInterval < time.Second {
-		targetInterval = time.Second
-	}
-
-	// Select table
-	targetIntervalForTableSelection := targetInterval
-	if input.MainTableRequired {
-		targetIntervalForTableSelection = time.Second
-	}
-	table, computedInterval := c.getBestTable(input.Start, targetIntervalForTableSelection)
-	if input.StartForInterval != nil {
-		_, computedInterval = c.getBestTable(*input.StartForInterval, targetIntervalForTableSelection)
-	}
+	table, computedInterval, targetInterval := c.computeTableAndInterval(input)
 
 	// Make start/end match the computed interval (currently equal to the table resolution)
 	start := input.Start.Truncate(computedInterval)
@@ -222,6 +228,21 @@ func (c *Component) contextFunc(inputStr string) context {
 				diffOffset)
 		},
 	}
+}
+
+func (c *Component) computeTableAndInterval(input inputContext) (string, time.Duration, time.Duration) {
+	targetInterval := time.Duration(uint64(input.End.Sub(input.Start)) / uint64(input.Points))
+	if targetInterval < time.Second {
+		targetInterval = time.Second
+	}
+
+	// Select table
+	targetIntervalForTableSelection := targetInterval
+	if input.MainTableRequired {
+		targetIntervalForTableSelection = time.Second
+	}
+	table, computedInterval := c.getBestTable(input.Start, targetIntervalForTableSelection)
+	return table, computedInterval, targetInterval
 }
 
 // Get the best table starting at the specified time.
