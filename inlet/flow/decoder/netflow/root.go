@@ -45,7 +45,7 @@ func New(r *reporter.Reporter, dependencies decoder.Dependencies, option decoder
 	nd := &Decoder{
 		r:                       r,
 		d:                       dependencies,
-		errLogger:               r.Sample(reporter.BurstSampler(30*time.Second, 3)),
+		errLogger:               r.Sample(reporter.BurstSampler(30*time.Second, 100)),
 		templates:               map[string]*templateSystem{},
 		sampling:                map[string]*samplingRateSystem{},
 		useTsFromNetflowsPacket: option.TimestampSource == decoder.TimestampSourceNetflowPacket,
