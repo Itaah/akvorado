@@ -6,6 +6,7 @@ package netflow
 
 import (
 	"bytes"
+	"github.com/bio-routing/bio-rd/util/log"
 	"net/netip"
 	"strconv"
 	"sync"
@@ -265,6 +266,9 @@ func (nd *Decoder) Decode(in decoder.RawFlow) []*schema.FlowMessage {
 	if nd.useTsFromFirstSwitched {
 		tsOffset = ts - sysUptime
 	}
+	log.Infof("Timestamp in.TimeReceived", time.Unix(int64(ts), 0))
+	log.Infof("tsOffset computed for first switched: %d", ts-sysUptime)
+
 	if packetNFv9.Version == 9 {
 		flowMessageSet = nd.decodeNFv9(packetNFv9, sampling, tsOffset)
 	} else if packetIPFIX.Version == 10 {
@@ -275,6 +279,7 @@ func (nd *Decoder) Decode(in decoder.RawFlow) []*schema.FlowMessage {
 		if !nd.useTsFromFirstSwitched {
 			fmsg.TimeReceived = ts
 		}
+		log.Infof("New TimeStamp for first switched message: %s", time.Unix(int64(fmsg.TimeReceived), 0))
 		fmsg.ExporterAddress = exporterAddress
 	}
 
