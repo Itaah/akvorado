@@ -57,15 +57,8 @@ func (input graphSankeyHandlerInput) toSQL() (string, error) {
 	// With
 	with := []string{
 		fmt.Sprintf("source AS (%s)", input.sourceSelect()),
-		fmt.Sprintf(`(SELECT MAX(TimeReceived) - MIN(TimeReceived) FROM source WHERE %s) AS range`, where),
-		fmt.Sprintf(
-			"rows AS (SELECT %s FROM source WHERE %s GROUP BY %s ORDER BY SUM(%s) DESC LIMIT %d)",
-			strings.Join(dimensions, ", "),
-			where,
-			strings.Join(dimensions, ", "),
-			metricForTopSort(input.Units),
-			input.Limit),
-	}
+		fmt.Sprintf(`(SELECT MAX(TimeReceived) - MIN(TimeReceived) FROM source WHERE %s) AS range`, where)}
+	with = append(with, selectSankeyRowsByLimitType(input, dimensions, where))
 
 	sqlQuery := fmt.Sprintf(`
 {{ with %s }}
@@ -160,7 +153,7 @@ func (c *Component) graphSankeyHandlerFunc(gc *gin.Context) {
 		output.Rows = append(output.Rows, result.Dimensions)
 		output.Xps = append(output.Xps, int(result.Xps))
 		// Consider each pair of successive dimensions
-		for i := 0; i < len(input.Dimensions)-1; i++ {
+		for i := range len(input.Dimensions) - 1 {
 			dimension1 := completeName(result.Dimensions[i], i)
 			dimension2 := completeName(result.Dimensions[i+1], i+1)
 			addNode(dimension1)

@@ -14,7 +14,9 @@ jobs:
     name: 🤖 Check dependabot status
     runs-on: ubuntu-latest
     permissions: {}
-    if: "!startsWith(github.event.head_commit.message, 'build: update Nix dependency hashes')"
+    if: |
+      !startsWith(github.event.head_commit.message, 'build: update Nix dependency hashes') ||
+       startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Fetch dependabot metadata
         if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request' }}
@@ -40,6 +42,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Docker Compose up
         run: docker compose -f docker/docker-compose-dev.yml up --wait --wait-timeout 60 --quiet-pull
       - name: Setup
@@ -88,6 +91,8 @@ jobs:
     steps:
       # Setup
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup
         uses: ./.github/actions/setup
 
@@ -116,6 +121,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: linux-coverage
@@ -125,7 +131,7 @@ jobs:
           name: macos-coverage
           path: test/macos
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: bab8d6d9-e90c-4e37-b156-38a9a4c2108e # not ideal, but limited risk
           files: ./test/linux/go/coverage.xml,./test/linux/js/cobertura-coverage.xml, ./test/macos/go/coverage.xml,./test/macos/js/cobertura-coverage.xml
@@ -137,7 +143,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ '1.21', '1.22' ]
+        go-version: [ '1.22', '1.23' ]
     needs:
       - dependabot
     if: needs.dependabot.outputs.package-ecosystem != 'npm_and_yarn'
@@ -145,6 +151,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -170,9 +178,11 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node-version: [16, 18, 20]
+        node-version: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -188,6 +198,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup
         uses: ./.github/actions/setup
       - name: License check
@@ -208,6 +220,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/metadata-action@v5
@@ -242,8 +255,6 @@ jobs:
   release:
     name: 🚀 Publish release
     needs:
-      - build-linux
-      - build-macos
       - build-go
       - build-js
       - docker
@@ -255,6 +266,8 @@ jobs:
     steps:
       # Changelog
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Generate changelog
         run: make changelog.md
 
@@ -272,6 +285,13 @@ jobs:
             .env docker/* \
             orchestrator/clickhouse/data/docker-entrypoint.sh \
             config/*.yaml
+      - name: Build Docker Compose "upgrade"
+        run: |
+          mv .env .env.dist
+          mv docker/docker-compose-local.yml docker/docker-compose-local.yml.dist
+          tar zcvf docker-compose-upgrade.tar.gz \
+            .env.dist docker/* \
+            orchestrator/clickhouse/data/docker-entrypoint.sh
 
       # Publish release
       - name: Publish release
@@ -283,3 +303,4 @@ jobs:
           files: |
             akvorado
             docker-compose-quickstart.tar.gz
+            docker-compose-upgrade.tar.gz

@@ -388,11 +388,10 @@ The `snmp` provider accepts the following configuration keys:
 - `security-parameters` is a map from exporter subnets to the SNMPv3 USM
   security parameters. Like for `communities`, `::/0` can be used to the set the
   default value. The security paramaters accepts the following keys:
-  `user-name`, `authentication-protocol` (can be omitted, otherwise `MD5`,
-  `SHA`, `SHA224`, `SHA256`, `SHA384`, and `SHA512` are accepted),
-  `authentication-passphrase` (if the previous value was set),
-  `privacy-protocol` (can be omitted, otherwise `DES`, `AES`, `AES192`,
-  `AES256`, `AES192C`, and `AES256C` are accepted, the later being
+  `user-name`, `authentication-protocol` (`none`, `MD5`, `SHA`, `SHA224`,
+  `SHA256`, `SHA384`, and `SHA512` are accepted), `authentication-passphrase`
+  (if the previous value was set), `privacy-protocol` (`none`, `DES`, `AES`,
+  `AES192`, `AES256`, `AES192C`, and `AES256C` are accepted, the later being
   Cisco-variant), `privacy-passphrase` (if the previous value was set), and
   `context-name`.
 - `ports` is a map from exporter subnets to the SNMP port to use to poll
@@ -649,7 +648,7 @@ console (like `echo-reply` or `frag-needed`).
 
 You can add custom dimensions to be looked up via a dictionary. This is useful
 to enrich your flow with additional information not possible to get in the
-classifier. This works by providing the database with a CSV files containing the
+classifier. This works by providing the database with a CSV file containing the
 values.
 
 ```yaml
@@ -688,7 +687,7 @@ Independently, if `DstAddr` has the value `2001:db8::1`, the dimension
 All other IPs will get "DefaultRole" in their `SrcAddrIPRole`/`DstAddrIPRole`
 dimension.
 
-The `label`and `default` keys are optional.
+The `label` and `default` keys are optional.
 
 It is possible to add the same dictionary to multiple dimensions, usually for
 the "Input" and "Output"-direction.
@@ -811,9 +810,10 @@ provided:
   The default value is 30 days. This requires a restart of ClickHouse.
 - `prometheus-endpoint` defines the endpoint to configure to expose ClickHouse
   metrics to Prometheus. When not defined, this is left unconfigured.
-- `networks` maps subnets to attributes. Attributes are `name`,
-  `role`, `site`, `region`, and `tenant`. They are exposed as
-  `SrcNetName`, `DstNetName`, `SrcNetRole`, `DstNetRole`, etc.
+- `networks` maps subnets to attributes. Attributes are `name`, `role`, `site`,
+  `region`, and `tenant`. They are exposed as `SrcNetName`, `DstNetName`,
+  `SrcNetRole`, `DstNetRole`, etc. It is also possible to override GeoIP
+  attributes `city`, `state`, `country`, and `ASN`.
 - `network-sources` fetch a remote source mapping subnets to
   attributes. This is similar to `networks` but the definition is
   fetched through HTTP. It accepts a map from source names to sources.
@@ -824,15 +824,16 @@ provided:
   - `proxy` says if we should use a proxy (defined through environment variables like `http_proxy`)
   - `timeout` defines the timeout for fetching and parsing
   - `interval` is the interval at which the source should be refreshed
-  - `transform` is a [jq](https://stedolan.github.io/jq/manual/)
-    expression to transform the received JSON into a set of network
-    attributes represented as objects. Each object must have a
-    `prefix` attribute and, optionally, `name`, `role`, `site`,
-    `region`, and `tenant`. See the example provided in the shipped
-    `akvorado.yaml` configuration file.
+  - `transform` is a [jq](https://stedolan.github.io/jq/manual/) expression to
+    transform the received JSON into a set of network attributes represented as
+    objects. Each object must have a `prefix` attribute and, optionally, `name`,
+    `role`, `site`, `region`, `tenant`, `city`, `state`, `country`, and `asn`.
+    See the example provided in the shipped `akvorado.yaml` configuration file.
 - `asns` maps AS number to names (overriding the builtin ones)
 - `orchestrator-url` defines the URL of the orchestrator to be used
   by ClickHouse (autodetection when not specified)
+- `orchestrator-basic-auth` enables basic authentication to access the
+  orchestrator URL. It takes two attributes: `username` and `password`.
 
 The `resolutions` setting contains a list of resolutions. Each
 resolution has two keys: `interval` and `ttl`. The first one is the
@@ -911,7 +912,7 @@ The console itself accepts the following keys:
  - `default-visualize-options` to define default options for the "visualize"
    tab. It takes the following keys: `graph-type` (one of `stacked`,
    `stacked100`, `lines`, `grid`, or `sankey`), `start`, `end`, `filter`,
-   `dimensions` (a list), `limit`, `bidirectional` (a bool), `previous-period`
+   `dimensions` (a list), `limit`, `limitType`, `bidirectional` (a bool), `previous-period`
    (a bool)
  - `homepage-top-widgets` to define the widgets to display on the home page
    (among `src-as`, `dst-as`, `src-country`, `dst-country`, `exporter`,

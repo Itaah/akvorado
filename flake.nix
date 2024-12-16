@@ -13,8 +13,8 @@
         pkgs = import nixpkgs {
           inherit system;
         };
-        nodejs = pkgs.nodejs-18_x;
-        go = pkgs.go_1_22;
+        nodejs = pkgs.nodejs_20;
+        go = pkgs.go_1_23;
         frontend = pkgs.buildNpmPackage.override { inherit nodejs; } {
           name = "akvorado-frontend";
           src = ./console/frontend;
@@ -42,10 +42,6 @@
             find . -print0 | xargs -0 touch -d @0
 
             make all \
-              MOCKGEN=${pkgs.mockgen}/bin/mockgen \
-              GOIMPORTS=${pkgs.gotools}/bin/goimports \
-              PIGEON=${pkgs.pigeon}/bin/pigeon \
-              REVIVE=${pkgs.coreutils}/bin/true \
               ASNS_URL=${asn2org}/asns.csv \
               SERVICES_URL=${ianaServiceNames}
           '';

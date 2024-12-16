@@ -25,7 +25,15 @@ GENERATED_GO = \
 	orchestrator/clickhouse/data/protocols.csv \
 	orchestrator/clickhouse/data/tcp.csv \
 	orchestrator/clickhouse/data/udp.csv \
-	console/filter/parser.go
+	console/filter/parser.go \
+	inlet/core/asnprovider_enumer.go \
+	inlet/core/netprovider_enumer.go \
+	inlet/flow/decoder/timestampsource_enumer.go \
+	inlet/metadata/provider/snmp/authprotocol_enumer.go \
+	inlet/metadata/provider/snmp/privprotocol_enumer.go \
+	inlet/metadata/provider/gnmi/ifspeedpathunit_enumer.go \
+	console/homepagetopwidget_enumer.go \
+	common/kafka/saslmechanism_enumer.go
 GENERATED_TEST_GO = \
 	common/clickhousedb/mocks/mock_driver.go \
 	conntrackfixer/mocks/mock_conntrackfixer.go
@@ -48,46 +56,50 @@ all_js: .fmt-js~ .lint-js~ $(GENERATED_JS) console/data/frontend
 
 $(BIN):
 	@mkdir -p $@
-$(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
+$(BIN)/%: PACKAGE=$(shell $(GO) list -e -f '{{ range .Imports }}{{ printf "%s\n" . }}{{ end }}' tools.go | grep "/$*$$")
+$(BIN)/%: go.mod go.sum | $(BIN) ; $(info $(M) building tool $*…)
+	@[ -n "$(PACKAGE)" ] || (>&2 echo "*** Unknown tool $*!"; false)
 	$Q env GOBIN=$(abspath $(BIN)) $(GO) install $(PACKAGE)
 
-GOIMPORTS = $(BIN)/goimports
-$(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports@latest
-
-REVIVE = $(BIN)/revive
-$(BIN)/revive: PACKAGE=github.com/mgechev/revive@latest
-
+ENUMER = $(BIN)/enumer
 GOCOV = $(BIN)/gocov
-$(BIN)/gocov: PACKAGE=github.com/axw/gocov/gocov@v1.1.0
-
 GOCOVXML = $(BIN)/gocov-xml
-$(BIN)/gocov-xml: PACKAGE=github.com/AlekSi/gocov-xml@latest
-
+GOIMPORTS = $(BIN)/goimports
 GOTESTSUM = $(BIN)/gotestsum
-$(BIN)/gotestsum: PACKAGE=gotest.tools/gotestsum@latest
-
 MOCKGEN = $(BIN)/mockgen
-$(BIN)/mockgen: PACKAGE=go.uber.org/mock/mockgen@v0.4.0
-
 PIGEON = $(BIN)/pigeon
-$(BIN)/pigeon: PACKAGE=github.com/mna/pigeon@v1.1.0
-
+REVIVE = $(BIN)/revive
 WWHRD = $(BIN)/wwhrd
-$(BIN)/wwhrd: PACKAGE=github.com/frapposelli/wwhrd@latest
 
 # Generated files
 
 .DELETE_ON_ERROR:
 
 common/clickhousedb/mocks/mock_driver.go: go.mod | $(MOCKGEN) ; $(info $(M) generate mocks for ClickHouse driver…)
-	$Q echo '//go:build !release' > $@
-	$Q $(MOCKGEN) -package mocks \
-		github.com/ClickHouse/clickhouse-go/v2/lib/driver Conn,Row,Rows,ColumnType >> $@
+	$Q $(MOCKGEN) -package mocks -build_constraint "!release" -destination $@ \
+		github.com/ClickHouse/clickhouse-go/v2/lib/driver Conn,Row,Rows,ColumnType
 conntrackfixer/mocks/mock_conntrackfixer.go: go.mod | $(MOCKGEN) ; $(info $(M) generate mocks for conntrack-fixer…)
 	$Q if [ `$(GO) env GOOS` = "linux" ]; then \
-	   echo '//go:build !release' > $@ ; \
-	   $(MOCKGEN) -package mocks akvorado/conntrackfixer ConntrackConn,DockerClient >> $@ ; \
+	   $(MOCKGEN) -package mocks -build_constraint "!release" -destination $@ \
+		akvorado/conntrackfixer ConntrackConn,DockerClient ; \
 	fi
+
+inlet/core/asnprovider_enumer.go: go.mod inlet/core/config.go | $(ENUMER) ; $(info $(M) generate enums for ASNProvider…)
+	$Q $(ENUMER) -type=ASNProvider -text -transform=kebab -trimprefix=ASNProvider inlet/core/config.go
+inlet/core/netprovider_enumer.go: go.mod inlet/core/config.go | $(ENUMER) ; $(info $(M) generate enums for NetProvider…)
+	$Q $(ENUMER) -type=NetProvider -text -transform=kebab -trimprefix=NetProvider inlet/core/config.go
+inlet/flow/decoder/timestampsource_enumer.go: go.mod inlet/flow/decoder/config.go | $(ENUMER) ; $(info $(M) generate enums for TimestampSource…)
+	$Q $(ENUMER) -type=TimestampSource -text -transform=kebab -trimprefix=TimestampSource inlet/flow/decoder/config.go
+inlet/metadata/provider/snmp/authprotocol_enumer.go: go.mod inlet/metadata/provider/snmp/config.go | $(ENUMER) ; $(info $(M) generate enums for AuthProtocol…)
+	$Q $(ENUMER) -type=AuthProtocol -text -transform=kebab -trimprefix=AuthProtocol inlet/metadata/provider/snmp/config.go
+inlet/metadata/provider/snmp/privprotocol_enumer.go: go.mod inlet/metadata/provider/snmp/config.go | $(ENUMER) ; $(info $(M) generate enums for PrivProtocol…)
+	$Q $(ENUMER) -type=PrivProtocol -text -transform=kebab -trimprefix=PrivProtocol inlet/metadata/provider/snmp/config.go
+inlet/metadata/provider/gnmi/ifspeedpathunit_enumer.go: go.mod inlet/metadata/provider/gnmi/config.go | $(ENUMER) ; $(info $(M) generate enums for IfSpeedPathUnit…)
+	$Q $(ENUMER) -type=IfSpeedPathUnit -text -transform=kebab -trimprefix=Speed inlet/metadata/provider/gnmi/config.go
+console/homepagetopwidget_enumer.go: go.mod console/config.go | $(ENUMER) ; $(info $(M) generate enums for HomepageTopWidget…)
+	$Q $(ENUMER) -type=HomepageTopWidget -text -json -transform=kebab -trimprefix=HomepageTopWidget console/config.go
+common/kafka/saslmechanism_enumer.go: go.mod common/kafka/config.go | $(ENUMER) ; $(info $(M) generate enums for SASLMechanism…)
+	$Q $(ENUMER) -type=SASLMechanism -text -transform=kebab -trimprefix=SASL common/kafka/config.go
 
 common/schema/definition_gen.go: common/schema/definition.go common/schema/definition_gen.sh ; $(info $(M) generate column definitions…)
 	$Q ./common/schema/definition_gen.sh > $@
@@ -211,14 +223,12 @@ licensecheck: console/frontend/node_modules | $(WWHRD) ; $(info $(M) check depen
 	$Q err=0 ; $(GO) mod vendor && $(WWHRD) --quiet check || err=$$? ; rm -rf vendor/ ; exit $$err
 	$Q cd console/frontend ; $(NPM) exec --no -- license-compliance \
 		--production \
-		--allow "$$(sed -n 's/^  - //p' ../../.wwhrd.yml | paste -sd ";")" \
+		--allow "$$(sed -n '/^allowlist:/,/^[a-z]/p' ../../.wwhrd.yml | sed -n 's/^  - //p' | paste -sd ";")" \
 		--report detailed
 
-.PHONY: clean mrproper
-clean: ; $(info $(M) cleaning…)	@ ## Cleanup almost everything
-	@rm -rf test $(GENERATED) inlet/flow/decoder/flow-*.pb.go *~
-mrproper: clean
-	@rm -rf bin
+.PHONY: clean
+clean: ; $(info $(M) cleaning…)	@ ## Cleanup everything
+	@rm -rf test $(GENERATED) inlet/flow/decoder/flow-*.pb.go *~ bin
 
 .PHONY: help
 help:

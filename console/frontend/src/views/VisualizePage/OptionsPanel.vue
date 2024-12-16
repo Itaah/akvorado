@@ -17,7 +17,7 @@
       <button
         class="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-white shadow transition-transform duration-100 hover:bg-gray-300 dark:bg-gray-900 dark:shadow-white/10 dark:hover:bg-black lg:translate-x-1/2 lg:translate-y-0"
         :class="open ? 'translate-y-1/2' : '-translate-y-1/2'"
-        @click="open = !open"
+        @click="(open = !open)"
       >
         <ChevronRightIcon class="hidden lg:inline" />
         <ChevronDownIcon class="lg:hidden" />
@@ -192,6 +192,7 @@ const options = computed((): InternalModelType => {
     humanEnd: timeRange.value?.end,
     dimensions: dimensions.value?.selected,
     limit: dimensions.value?.limit,
+    limitType: dimensions.value?.limitType,
     "truncate-v4": dimensions.value?.truncate4,
     "truncate-v6": dimensions.value?.truncate6,
     filter: filter.value?.expression,
@@ -243,6 +244,7 @@ watch(
       humanEnd: defaultOptions.end,
       dimensions: toRaw(defaultOptions.dimensions),
       limit: defaultOptions.limit,
+      limitType: defaultOptions.limitType,
       "truncate-v4": 32,
       "truncate-v6": 128,
       filter: defaultOptions.filter,
@@ -262,6 +264,7 @@ watch(
     dimensions.value = {
       selected: [...currentValue.dimensions],
       limit: currentValue.limit,
+      limitType: currentValue.limitType,
       truncate4: currentValue["truncate-v4"] || 32,
       truncate6: currentValue["truncate-v6"] || 128,
     };
@@ -296,6 +299,7 @@ export type ModelType = {
   humanEnd: string;
   dimensions: string[];
   limit: number;
+  limitType: string;
   "truncate-v4": number;
   "truncate-v6": number;
   filter: string;

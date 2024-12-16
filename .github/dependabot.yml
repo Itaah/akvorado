@@ -19,8 +19,6 @@ updates:
     labels:
       - dependencies
     open-pull-requests-limit: 10
-    ignore:
-      - dependency-name: "eslint" # broken
     groups:
       vueuse:
         patterns:
@@ -45,6 +43,7 @@ updates:
           - "@volar/*"
           - "@vue/eslint-*"
           - "autoprefixer"
+          - "@eslint/*"
           - "eslint*"
           - "patch-package"
           - "postcss"
@@ -68,6 +67,7 @@ updates:
       interval: weekly
     labels:
       - dependencies
+    open-pull-requests-limit: 10
     groups:
       golang-org-x:
         patterns:

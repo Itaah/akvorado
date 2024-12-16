@@ -4,13 +4,11 @@
 package gnmi
 
 import (
-	"errors"
 	"net/netip"
 	"reflect"
 	"time"
 
 	"akvorado/common/helpers"
-	"akvorado/common/helpers/bimap"
 	"akvorado/inlet/metadata/provider"
 
 	"github.com/mitchellh/mapstructure"
@@ -73,43 +71,15 @@ type IfSpeedPath struct {
 type IfSpeedPathUnit int
 
 const (
-	SpeedBits     IfSpeedPathUnit = iota + 1 // SpeedBits means the speed is in bps
-	SpeedMegabits                            // SpeedMegabits means the speed is in Mbps
-	SpeedEthernet                            // SpeedEthernet means the speed is in OC ETHERNET_SPEED
-	SpeedHuman                               // SpeedHuman means the speed is human-formatted (10G)
+	// SpeedBps means the speed is in bps
+	SpeedBps IfSpeedPathUnit = iota + 1
+	// SpeedMbps means the speed is in Mbps
+	SpeedMbps
+	// SpeedEthernet means the speed is in OC ETHERNET_SPEED
+	SpeedEthernet
+	// SpeedHuman means the speed is human-formatted (10G)
+	SpeedHuman
 )
-
-var ifSpeedPathUnitMap = bimap.New(map[IfSpeedPathUnit]string{
-	SpeedBits:     "bps",
-	SpeedMegabits: "mbps",
-	SpeedEthernet: "ethernet",
-	SpeedHuman:    "human",
-})
-
-// MarshalText turns a speed unit to text
-func (sa IfSpeedPathUnit) MarshalText() ([]byte, error) {
-	got, ok := ifSpeedPathUnitMap.LoadValue(sa)
-	if ok {
-		return []byte(got), nil
-	}
-	return nil, errors.New("unknown speed unit")
-}
-
-// String turns a speed unit to string
-func (sa IfSpeedPathUnit) String() string {
-	got, _ := ifSpeedPathUnitMap.LoadValue(sa)
-	return got
-}
-
-// UnmarshalText provides a speed unit from text
-func (sa *IfSpeedPathUnit) UnmarshalText(input []byte) error {
-	got, ok := ifSpeedPathUnitMap.LoadKey(string(input))
-	if ok {
-		*sa = got
-		return nil
-	}
-	return errors.New("unknown provider")
-}
 
 // DefaultConfiguration represents the default configuration for the SNMP client.
 func DefaultConfiguration() provider.Configuration {
@@ -141,8 +111,8 @@ func DefaultModels() []Model {
 				"/configure/lag/description",
 			},
 			IfSpeedPaths: []IfSpeedPath{
-				{"/state/port/ethernet/oper-speed", SpeedMegabits},
-				{"/state/lag/bandwidth", SpeedBits},
+				{"/state/port/ethernet/oper-speed", SpeedMbps},
+				{"/state/lag/bandwidth", SpeedBps},
 			},
 		}, {
 			Name:            "Nokia SR Linux",
@@ -161,7 +131,7 @@ func DefaultModels() []Model {
 			},
 			IfSpeedPaths: []IfSpeedPath{
 				{"/interface/ethernet/port-speed", SpeedHuman},
-				{"/interface/lag/lag-speed", SpeedBits},
+				{"/interface/lag/lag-speed", SpeedBps},
 			},
 		}, {
 			Name:            "OpenConfig",
@@ -179,7 +149,7 @@ func DefaultModels() []Model {
 				"/interfaces/interface/subinterfaces/subinterface/state/description",
 			},
 			IfSpeedPaths: []IfSpeedPath{
-				{"/interfaces/interface/aggregation/state/lag-speed", SpeedMegabits},
+				{"/interfaces/interface/aggregation/state/lag-speed", SpeedMbps},
 				{"/interfaces/interface/ethernet/state/negotiated-port-speed", SpeedEthernet},
 				{"/interfaces/interface/ethernet/state/port-speed", SpeedEthernet},
 			},
@@ -190,7 +160,7 @@ func DefaultModels() []Model {
 			IfNamePaths:        []string{"/interfaces/interface/name"},
 			IfDescriptionPaths: []string{"/interfaces/interface/description"},
 			IfSpeedPaths: []IfSpeedPath{
-				{"/interfaces/interface/speed", SpeedBits},
+				{"/interfaces/interface/speed", SpeedBps},
 			},
 		},
 	}
@@ -218,17 +188,17 @@ func ConfigurationUnmarshallerHook() mapstructure.DecodeHookFunc {
 		if modelsKey != nil {
 			modelsValue := helpers.ElemOrIdentity(from.MapIndex(*modelsKey))
 			if modelsValue.Kind() == reflect.Array || modelsValue.Kind() == reflect.Slice {
-				for i := 0; i < modelsValue.Len(); i++ {
+				for i := range modelsValue.Len() {
 					val := helpers.ElemOrIdentity(modelsValue.Index(i))
 					if val.Kind() == reflect.String && val.String() == "defaults" {
 						// We need to replace this item with the default values.
 						newValue := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(new(interface{})).Elem()), 0, 0)
-						for j := 0; j < modelsValue.Len(); j++ {
+						for j := range modelsValue.Len() {
 							if i != j {
 								newValue = reflect.Append(newValue, modelsValue.Index(j))
 							} else {
 								defaults := DefaultModels()
-								for k := 0; k < len(defaults); k++ {
+								for k := range len(defaults) {
 									newValue = reflect.Append(newValue, reflect.ValueOf(defaults[k]))
 								}
 							}

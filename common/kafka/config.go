@@ -8,11 +8,9 @@ package kafka
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"errors"
 	"fmt"
 
 	"akvorado/common/helpers"
-	"akvorado/common/helpers/bimap"
 
 	"github.com/IBM/sarama"
 )
@@ -82,47 +80,15 @@ func (v Version) MarshalText() ([]byte, error) {
 type SASLMechanism int
 
 const (
-	SASLNone        SASLMechanism = iota // SASLNone means no user authentication
-	SASLPlainText                        // SASLPlainText means user/password in plain text
-	SASLSCRAMSHA256                      // SASLSCRAMSHA256 enables SCRAM challenge with SHA256
-	SASLSCRAMSHA512                      // SASLSCRAMSHA512 enables SCRAM challenge with SHA512
+	// SASLNone means no user authentication
+	SASLNone SASLMechanism = iota
+	// SASLPlain means user/password in plain text
+	SASLPlain
+	// SASLScramSHA256 enables SCRAM challenge with SHA256
+	SASLScramSHA256
+	// SASLScramSHA512 enables SCRAM challenge with SHA512
+	SASLScramSHA512
 )
-
-var saslAlgorithmMap = bimap.New(map[SASLMechanism]string{
-	SASLNone:        "none",
-	SASLPlainText:   "plain",
-	SASLSCRAMSHA256: "scram-sha256",
-	SASLSCRAMSHA512: "scram-sha512",
-})
-
-// MarshalText turns a SASL algorithm to text
-func (sa SASLMechanism) MarshalText() ([]byte, error) {
-	got, ok := saslAlgorithmMap.LoadValue(sa)
-	if ok {
-		return []byte(got), nil
-	}
-	return nil, errors.New("unknown SASL algorithm")
-}
-
-// String turns a SASL algorithm to string
-func (sa SASLMechanism) String() string {
-	got, _ := saslAlgorithmMap.LoadValue(sa)
-	return got
-}
-
-// UnmarshalText provides a SASL algorithm from text
-func (sa *SASLMechanism) UnmarshalText(input []byte) error {
-	if len(input) == 0 {
-		*sa = SASLNone
-		return nil
-	}
-	got, ok := saslAlgorithmMap.LoadKey(string(input))
-	if ok {
-		*sa = got
-		return nil
-	}
-	return errors.New("unknown provider")
-}
 
 // NewConfig returns a Sarama Kafka configuration ready to use.
 func NewConfig(config Configuration) (*sarama.Config, error) {
@@ -142,14 +108,14 @@ func NewConfig(config Configuration) (*sarama.Config, error) {
 			kafkaConfig.Net.SASL.User = config.TLS.SASLUsername
 			kafkaConfig.Net.SASL.Password = config.TLS.SASLPassword
 			kafkaConfig.Net.SASL.Mechanism = sarama.SASLTypePlaintext
-			if config.TLS.SASLMechanism == SASLSCRAMSHA256 {
+			if config.TLS.SASLMechanism == SASLScramSHA256 {
 				kafkaConfig.Net.SASL.Handshake = true
 				kafkaConfig.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
 				kafkaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
 					return &xdgSCRAMClient{HashGeneratorFcn: sha256.New}
 				}
 			}
-			if config.TLS.SASLMechanism == SASLSCRAMSHA512 {
+			if config.TLS.SASLMechanism == SASLScramSHA512 {
 				kafkaConfig.Net.SASL.Handshake = true
 				kafkaConfig.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 				kafkaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {

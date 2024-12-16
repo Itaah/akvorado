@@ -12,6 +12,10 @@ service and accepts SNMP requests. For routers not listed below, have
 a look at the [configuration
 snippets](https://github.com/kentik/config-snippets/) from Kentik.
 
+It is better to **sample on ingress only**. This requires to sample on both
+external and internal interfaces, but this prevents flow to be accounted twice
+when they enter and exit through external ports.
+
 ### Exporter Address
 
 The exporter address is set from the field inside the flow message by default,
@@ -389,6 +393,126 @@ Then, configure SNMP:
 snmp-server community <community> ro
 snmp-server vrf VRF-MANAGEMENT
 ```
+
+### Nokia SROS
+Model-driven command line interface (MD-CLI) syntax is used below. The full-context is provided as this is probably easier to adapt to classic CLI.
+
+#### Flows
+sFlow is currently merely supported on devices running SROS, one mostly has to stick to IPFIX
+
+```
+/configure cflowd admin-state enable
+/configure cflowd cache-size 250000
+/configure cflowd template-retransmit 60
+/configure cflowd active-flow-timeout 15
+/configure cflowd inactive-flow-timeout 15
+/configure cflowd sample-profile 1 sample-rate 2000
+/configure cflowd collector 192.0.2.1 port 2055 admin-state enable
+/configure cflowd collector 192.0.2.1 port 2055 description "akvorado.example.net"
+/configure cflowd collector 192.0.2.1 port 2055 router-instance "Base"
+/configure cflowd collector 192.0.2.1 port 2055 version 10
+```
+
+Either configure sampling on the individual interfaces
+```
+/configure service ies "internet" interface "if1/1/c1/1:0" cflowd-parameters sampling unicast type interface
+/configure service ies "internet" interface "if1/1/c1/1:0" cflowd-parameters sampling unicast direction ingress-only
+/configure service ies "internet" interface "if1/1/c1/1:0" cflowd-parameters sampling unicast sample-profile 1
+```
+or add it to apply groups which are probably already in place
+
+```
+/configure groups group "peering" service ies "internet" interface "<i.*>" cflowd-parameters sampling unicast type interface
+/configure groups group "peering" service ies "internet" interface "<i.*>" cflowd-parameters sampling unicast direction ingress-only
+/configure groups group "peering" service ies "internet" interface "<i.*>" cflowd-parameters sampling unicast sample-profile 1
+
+/configure service ies "internet" interface "if1/1/c1/1:0" apply-groups ["peering"]
+```
+
+#### SNMP
+Nokia routers running SROS use a different interface index in their flow records
+as the SNMP interface index usually used by other devices. To fix this issue,
+you need to use `cflowd use-vrtr-if-index`. More information can be found in
+[Nokia's
+documentation](https://infocenter.nokia.com/public/7750SR140R4/topic/com.sr.router.config/html/cflowd_cli.html#tgardner5iexrn6muno)
+
+#### GNMI
+Instead of SNMP GNMI can be used. The interface index challenge (see `SNMP` above) also applies. See this [discussion](https://github.com/akvorado/akvorado/discussions/1275) for further details and possible workarounds.
+
+Unencrypted connections are used in this example (TLS encyption is out of scope here), do not use in production (or at least ensure the user has RO only permissions)
+```
+/configure system grpc admin-state enable
+/configure system grpc allow-unsecure-connection
+```
+Akvorado only needs Read-Only access
+```
+/configure system security user-params local-user user "akvorado" access grpc true
+/configure system security user-params local-user user "akvorado" console member ["grpc_ro"]
+```
+```
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnmi-get permit
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnmi-set deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnmi-subscribe permit
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnoi-file-get deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnoi-file-transfertoremote deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnoi-file-put deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnoi-file-stat deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization gnoi-file-remove deny
+/configure system security aaa local-profiles profile "grpc_ro" grpc rpc-authorization md-cli-session deny
+```
+
+#### BMP
+
+```
+/configure bmp admin-state enable
+/configure bmp station "akvorado" admin-state enable
+/configure bmp station "akvorado" description "akvorado.example.net"
+/configure bmp station "akvorado" stats-report-interval 300
+/configure bmp station "akvorado" connection local-address 192.0.2.42
+/configure bmp station "akvorado" connection station-address ip-address 192.0.2.1
+/configure bmp station "akvorado" connection station-address port 10179
+/configure bmp station "akvorado" family ipv4 true
+/configure bmp station "akvorado" family ipv6 true
+```
+
+```
+/configure router "Base" bgp monitor admin-state enable
+/configure router "Base" bgp monitor route-monitoring post-policy true
+/configure router "Base" bgp monitor station "akvorado" { }
+```
+
+### GNU/Linux
+
+#### pmacctd
+
+Configure pmacctd with sFlow receiver:
+```yaml
+/etc/pmacctd/config.conf: |
+  daemonize: false
+  plugins: sfprobe[any]
+  sfprobe_receiver: akvorado-inlet-receiver-replace-me:6343
+  aggregate: src_host,dst_host,in_iface,out_iface,src_port,dst_port,proto
+  pcap_ifindex: map
+  pcap_interfaces_map: /etc/pmacctd/interfaces.map
+  pcap_interface_wait: true
+  sfprobe_agentsubid: 1402
+  sampling_rate: 1000
+  snaplen: 128
+/etc/pmacctd/interfaces.map: |
+  ifindex=1 ifname=lo direction=in
+  ifindex=1 ifname=lo direction=out
+  ifindex=3 ifname=eth0 direction=in
+  ifindex=3 ifname=eth0 direction=out
+  ifindex=4 ifname=eth1 direction=in
+  ifindex=4 ifname=eth1 direction=out
+```
+
+Here we `set` the interface indexes manually entirely based on the interface
+names and completely ignoring the kernel ifIndex for the flows. pmacctd can
+be run inside containers where SNMPd does not return description for the
+interfaces, which is a required field for the flow. With this setup, you can
+make use of the static metadata provider to match the exporter and accept the
+flow for further classification.
 
 ## Kafka
 

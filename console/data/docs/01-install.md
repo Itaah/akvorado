@@ -32,18 +32,18 @@ Currently, only a pre-built binary for Linux x86-64 is provided.
 
 ## Compilation from source
 
-You need a proper installation of [Go](https://go.dev/doc/install) (1.21+), and
-[NodeJS](https://nodejs.org/en/download/) (16+) with NPM (6+). For example, on
+You need a proper installation of [Go](https://go.dev/doc/install) (1.22+), and
+[NodeJS](https://nodejs.org/en/download/) (18+) with NPM (6+). For example, on
 Debian:
 
 ```console
 # apt install golang nodejs npm
 # go version
-go version go1.22.5 linux/amd64
+go version go1.23.3 linux/amd64
 # node --version
-v16.15.1
+v20.18.1
 # npm --version
-8.14.0
+9.2.0
 ```
 
 Then, type:
@@ -101,12 +101,14 @@ When using `docker compose`, use the following commands to fetch an updated
 
 ```console
 # cd akvorado
-# curl -sL https://github.com/akvorado/akvorado/releases/latest/download/docker-compose-quickstart.tar.gz | tar zxvf - docker-compose.yml
+# curl -sL https://github.com/akvorado/akvorado/releases/latest/download/docker-compose-upgrade.tar.gz | tar zxvf -
 # docker compose pull
 # docker compose stop akvorado-orchestrator
 # docker compose up -d
 ```
 
-Note that if Zookeeper or Kakfa gets upgraded in the process, this can be
-disruptive. Feel free to only use `docker compose pull akvorado-orchestrator` to
-only update Akvorado image.
+The `docker-compose-upgrade.tar.gz` tarball ships `.env.dist` instead of `.env`.
+You may want to check the differences with your setup (most of the time, there
+shouldn't have any). Note that if Zookeeper or Kakfa gets upgraded in the
+process, this can be disruptive. You may want to review the changes in
+`docker/versions.yml`.

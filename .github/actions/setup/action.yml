@@ -16,12 +16,12 @@ inputs:
     description: Node version to install
     type: number
     required: false
-    default: 18
+    default: 20
   go-version:
     description: Go version to install
     type: string
     required: false
-    default: '1.22'
+    default: '1.23'
 runs:
   using: composite
   steps:

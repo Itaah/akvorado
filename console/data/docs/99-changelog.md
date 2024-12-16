@@ -11,12 +11,27 @@ identified with a specific icon:
 - 🩹: bug fix
 - 🌱: miscellaneous change
 
-## Next version
+## 1.11.2 - 2024-11-01
+
+- 🩹 *inlet*: fix decoding of QinQ in Ethernet packets
+- 🩹 *console*: fix ordering of top rows when multiple sampling rates are used
+- 🌱 *docker*: update ClickHouse to 24.8 (not mandatory)
+- 🌱 *docker*: update to Traefik 3.1 (not mandatory)
+- 🌱 *docker*: add docker/docker-compose-local.yml for local overrides
+
+## 1.11.1 - 2024-09-01
+
+For upgrading, you should use the "upgrade tarball" instead of the "quickstart
+tarball". This new tarball does not upgrade the configuration files, nor the
+`.env` file.
 
 - 🩹 *console*: sort results by number of packets when unit is packets per second
+- 🌱 *inlet*: use AS path from routing component if sFlow received an empty one
 - 🌱 *console*: add `bidirectional` and `previous-period` as configurable values for default visualize options
 - 🌱 *docker*: build IPinfo updater image from CI
 - 🌱 *docker*: update Kafka UI to 0.7.2
+- 🌱 *docker*: provide an upgrade tarball in addition to the quickstart tarball
+- 🌱 *build*: minimal Go version to build is now 1.22
 
 ## 1.11.0 - 2024-06-26
 
@@ -52,7 +67,7 @@ identified with a specific icon:
 
 On this release, geo IP is now performed in ClickHouse instead of inlet. When
 using the standard `docker compose` setup, the configuration should be
-automatically migrated from the inlet component to the clickhouse component.
+automatically migrated from the inlet component to the orchestrator component.
 This also changes how geo IP is used for AS numbers: geo IP is used as last
 resort when configured. It also increases memory usage (1.3GB for ClickHouse).
 
@@ -114,7 +129,7 @@ can install the `docker-compose-v2` package. For other options, check the
 - 🌱 *console*: add filtering support for custom columns
 - 🌱 *inlet*: update [Expr](https://expr.medv.io/), the language behind the
   classifiers: support for variables
-- 🌱 *inlet*: support for RFC 7133 for IPFIX
+- 🌱 *inlet*: support for RFC 7133 for IPFIX (data link frame)
 - 🌱 *orchestrator*: improve performance when looking up for `SrcNetPrefix` and
   `DstNetPrefix` when these columns are materialized
 

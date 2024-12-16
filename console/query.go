@@ -4,6 +4,7 @@
 package console
 
 import (
+	"fmt"
 	"strings"
 
 	"akvorado/common/schema"
@@ -33,11 +34,35 @@ func (c *Component) fixQueryColumnName(name string) string {
 	return ""
 }
 
-func metricForTopSort(inputUnit string) string {
-	switch inputUnit {
-	case "pps":
-		return "Packets"
-	default:
-		return "Bytes"
+func selectSankeyRowsByLimitType(input graphSankeyHandlerInput, dimensions []string, where string) string {
+	return selectRowsByLimitType(input.graphCommonHandlerInput, dimensions, where)
+}
+
+func selectLineRowsByLimitType(input graphLineHandlerInput, dimensions []string, where string) string {
+	return selectRowsByLimitType(input.graphCommonHandlerInput, dimensions, where)
+}
+
+func selectRowsByLimitType(input graphCommonHandlerInput, dimensions []string, where string) string {
+	var rowsType string
+	var source string
+	var orderBy string
+	if input.LimitType == "max" {
+		source = fmt.Sprintf("( SELECT %s AS sum_at_time FROM source WHERE %s GROUP BY %s )",
+			strings.Join(append(dimensions, "{{ .Units }}"), ", "),
+			where,
+			strings.Join(dimensions, ", "),
+		)
+		orderBy = "MAX(sum_at_time)"
+	} else {
+		source = fmt.Sprintf("source WHERE %s", where)
+		orderBy = "{{ .Units }}"
 	}
+	rowsType = fmt.Sprintf(
+		"rows AS (SELECT %s FROM %s GROUP BY %s ORDER BY %s DESC LIMIT %d)",
+		strings.Join(dimensions, ", "),
+		source,
+		strings.Join(dimensions, ", "),
+		orderBy,
+		input.Limit)
+	return rowsType
 }
