@@ -37,12 +37,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1738422722,
-        "narHash": "sha256-Q4vhtbLYWBUnjWD4iQb003Lt+N5PuURDad1BngGKdUs=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "102a39bfee444533e6b4e8611d7e92aa39b7bec1",
-        "type": "github"
+        "lastModified": 1788608636,
+        "narHash": "sha256-wMTrhzkWjSzdaTUowbzEnZeR4LJejNlhVeFTzRg1Lfs=",
+        "rev": "0af3d1402dec3fc7e93635e511d1f7428c89cebf",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1068065.0af3d1402dec/nixexprs.tar.xz"
       },
       "original": {
         "id": "nixpkgs",
